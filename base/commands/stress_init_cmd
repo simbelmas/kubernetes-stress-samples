@@ -1,0 +1,4 @@
+set -x
+uptime
+stress-ng -vm 1 --vm-bytes 10M --timeout 5s --metrics-brief --log-brief
+uptime

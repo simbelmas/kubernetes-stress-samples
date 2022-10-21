@@ -1,0 +1,6 @@
+set -x
+uptime
+stress-ng --cpu 2 -vm 2 --vm-bytes 150M --timeout 40 --metrics-brief --log-brief
+touch /stress-io/pod-running
+stress-ng --cpu 1 -vm 2 --vm-bytes 150M --timeout 300 --metrics-brief --log-brief
+uptime

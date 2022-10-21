@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: stress
+
+resources:
+- ../base/
+
+configMapGenerator:
+- name: stress-cm
+  options:
+    labels:
+      app.kubernetes.io/part-of: stress
+      app.kubernetes.io/instance: stress
+  behavior: replace
+  files:
+  - commands/stress_init_cmd
+  - commands/stress_cmd
+  - commands/iteration_interval_seconds
+
+patchesStrategicMerge:
+- deployment.yaml 

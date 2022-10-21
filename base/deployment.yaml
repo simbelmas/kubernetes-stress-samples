@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress
+  labels:
+    app.kubernetes.io/part-of: stress
+    app.kubernetes.io/instance: stress
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: stress
+      app.kubernetes.io/instance: stress
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: stress
+        app.kubernetes.io/instance: stress
+    spec:
+      containers:
+      - image: quay.io/simbelmas/alpine-stress:latest
+        imagePullPolicy: IfNotPresent
+        name: stress
+        volumeMounts:
+        - mountPath: /stress-io
+          name: stress-io
+        - name: commands
+          mountPath: "/stress-cmds"
+          readOnly: true
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 50Mi
+        command:
+        - ash
+        - -e
+        - -c
+        - |-
+          echo "$(date) Start Stress container"
+          export iteration=1
+          export ITERATION_INTERVAL_SECONDS=$(cat /stress-cmds/iteration_interval_seconds)
+          cd /stress-io
+          while true ; do
+            echo "$(date) Start iteration ${iteration}"
+            (
+              . /stress-cmds/stress_cmd
+            )
+            echo "$(date) End of iteration ${iteration}"
+            export iteration=$((iteration + 1))
+            if [ "${ITERATION_INTERVAL_SECONDS}" -gt 0 ] ; then
+              echo "Waiting ${ITERATION_INTERVAL_SECONDS} seconds before starting iteration ${iteration}"
+              sleep ${ITERATION_INTERVAL_SECONDS}
+            fi
+          done
+      initContainers:
+      - command:
+        - ash
+        - -e
+        - -c
+        - |-
+          cd /stress-io
+          echo "$(date) Starting stress init container"
+          (
+            . /stress-cmds/stress_init_cmd
+          )
+          echo "$(date) Stress init container stopped successfully"
+        image: quay.io/simbelmas/alpine-stress:latest
+        imagePullPolicy: IfNotPresent
+        name: stress-init
+        resources:
+          requests:
+            cpu: 100m
+            memory: 30Mi
+        volumeMounts:
+        - mountPath: /stress-io
+          name: stress-io
+        - name: commands
+          mountPath: "/stress-cmds"
+          readOnly: true
+      volumes:
+      - name: commands
+        configMap:
+          name: stress-cm
+      - emptyDir: {}
+        name: stress-io
